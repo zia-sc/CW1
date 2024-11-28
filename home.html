@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue.js Afterschool Learnings</title>
+    <link rel="stylesheet" href="style.css">
+
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Vue.js -->
+    <script src="https://unpkg.com/vue@2.7.8/dist/vue.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <!-- Add Logo Image -->
+
+            <img src="images/logo1.png" alt="Website Logo" class="logo">
+            <h1>{{ pageTitle }}</h1>
+            <button @click="toggleCheckout">
+                {{ cart.length }} <span class="fas fa-cart-plus"></span> Checkout
+            </button>
+        </header>
+
+        <main v-if="!showCheckoutPage">
+            <!-- Display lessons with v-for -->
+            <div v-if="showLessons">
+                <div v-for="lesson in sortedLessons" :key="lesson.title">
+                    <h2>{{ lesson.title }}</h2>
+                    <img :src="lesson.image" :alt="lesson.title" class="lesson-image" />
+                    <p>{{ lesson.description }}</p>
+                    <p>Price: ${{ lesson.price }}</p>
+                    <p>Space Available: {{ lesson.availableInventory }}</p> <!-- Showing available inventory -->
+                    <p>Rating:
+                        <span v-for="n in lesson.rating"><i class="fa-solid fa-star"></i></span>
+                        <span v-for="n in 5 - lesson.rating"><i class="fa-regular fa-star"></i></span>
+                    </p>
+
+                    <!-- Display availability messages based on itemsLeft -->
+                    <span v-if="itemsLeft(lesson) === 0">No space available!</span>
+                    <span v-else-if="itemsLeft(lesson) === 4">Only 4 spaces available</span>
+                    <span v-else-if="itemsLeft(lesson) > 0">Only {{ itemsLeft(lesson) }} left!</span>
+                    <span v-else>Add now!</span>
+
+
+
+                    <!-- Use canAddToCart to enable/disable the button -->
+                    <button @click="addToCart(lesson)" :disabled="!canAddToCart(lesson)">
+                        Add to cart
+                    </button>
+                </div>
+            </div>
+        </main>
+
+
+
+
+
+
+        <!-- Checkout Page -->
+        <section v-if="showCheckoutPage">
+            <h2>Registration Page</h2>
+            <p>
+                <strong>First Name:</strong>
+                <input v-model="order.firstName" />
+            </p>
+            <p>
+                <strong>Last Name:</strong>
+                <input v-model="order.lastName" />
+            </p>
+            <p>
+                <strong>Address:</strong>
+                <input v-model="order.address" />
+            </p>
+            <p>
+                <strong>City:</strong>
+                <input v-model="order.city" />
+            </p>
+
+            <!-- State Dropdown -->
+            <p>
+                <strong>State:</strong>
+                <select v-model="order.state">
+                    <option disabled value="">State</option>
+                    <option v-for="(stateName, stateAbbreviation) in order.states" :value="stateAbbreviation">
+                        {{ stateAbbreviation }}
+                    </option>
+                </select>
+            </p>
+
+            <p>
+                <strong>Zip/Postal Code:</strong>
+                <input v-model.number="order.zip" type="number" />
+            </p>
+
+            <!-- New "Are you a student?" Radio Buttons -->
+            <p>
+                <strong>Are you a student?</strong>
+                <input type="radio" id="yes" value="Yes" v-model="order.isStudent" />
+                <label for="yes">Yes</label>
+
+                <input type="radio" id="no" value="No" v-model="order.isStudent" />
+                <label for="no">No</label>
+            </p>
+
+            <!-- Updated "Learning Method" Radio Buttons -->
+            <p>
+                <strong>Learning Method:</strong>
+                <input type="radio" id="online" value="Online Learning" v-model="order.learningMethod" />
+                <label for="online">Online Learning</label>
+
+                <input type="radio" id="inPerson" value="In-person Learning" v-model="order.learningMethod" />
+                <label for="inPerson">In-person Learning</label>
+            </p>
+
+            <h2>Registration Form</h2>
+            <p>First Name: {{ order.firstName }}</p>
+            <p>Last Name: {{ order.lastName }}</p>
+            <p>Address: {{ order.address }}</p>
+            <p>City: {{ order.city }}</p>
+            <p>State: {{ selectedStateName }}</p> <!-- Display full state name -->
+            <p>Zip Code: {{ order.zip }}</p>
+            <p>Are you a student?: {{ order.isStudent }}</p> <!-- Display selected answer -->
+            <p>Learning Method: {{ order.learningMethod }}</p> <!-- Display selected learning method -->
+
+            <ul>
+                <li v-for="item in cart" :key="item.title">{{ item.title }}</li>
+            </ul>
+            <button @click="toggleCheckout">
+                Go back to Home
+            </button>
+            <button v-on:click="submitForm">Complete Registration</button>
+        </section>
+
+
+    </div>
+
+    <script src="lessons.js"></script> <!-- Load the external lessons.js file -->
+    <script>
+        var webstore = new Vue({
+            el: '#app',
+            data: {
+                pageTitle: 'NextGen Learning',
+                cart: [], // Cart array to hold selected lessons
+                showCheckoutPage: false, // Controls checkout visibility
+                showLessons: true,  // Flag to control the display of lessons
+                lessons: [], // Array to hold lessons loaded from external file
+                order: {
+                    firstName: '',
+                    lastName: '',
+                    address: '',
+                    city: '',
+                    state: '', // Selected state abbreviation
+                    states: {
+                        AL: 'Alabama',
+                        AR: 'Arizona',
+                        CA: 'California',
+                        NV: 'Nevada',
+                    },
+                    zip: '',
+
+
+
+
+                }
+            },
+            methods: {
+                // Add lesson to the cart
+                addToCart: function (lesson) {
+                    if (this.canAddToCart(lesson)) {
+                        this.cart.push(lesson);
+                        lesson.availableInventory--; // Decrease available inventory by 1 when added to cart
+                    }
+                },
+                // Check if the lesson can be added to the cart
+                canAddToCart: function (lesson) {
+                    return lesson.availableInventory > this.cartCount(lesson.title);
+                },
+                // Count how many times a lesson is in the cart
+                cartCount: function (lessonTitle) {
+                    return this.cart.filter(item => item.title === lessonTitle).length;
+                },
+                // Calculate remaining items left for each lesson
+                itemsLeft: function (lesson) {
+                    return lesson.availableInventory - this.cartCount(lesson.title);
+                },
+                // Toggle between main page and checkout
+                toggleCheckout: function () {
+                    this.showCheckoutPage = !this.showCheckoutPage;
+                },
+                // Submit the form (place order)
+                submitForm: function () {
+                    alert('Registration Completed!');
+                }
+            },
+
+            computed: {
+                // Get sorted lessons based on price
+                sortedLessons() {
+                    return this.lessons.slice().sort((a, b) => a.price - b.price); // Sort lessons by price
+                },
+                // Get full state name based on selected abbreviation
+                selectedStateName: function () {
+                    return this.order.states[this.order.state] || '';
+                }
+            },
+            mounted() {
+                // On mount, load lessons from external file
+                if (typeof lessons !== 'undefined') {
+                    this.lessons = lessons; // Load lessons data from external file
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
